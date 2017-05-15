@@ -1,22 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon May 15 13:50:37 2017
 
 @author: shawn
 """
 
 import os 
-#os.chdir(r'E:\Dropbox\ML part1')
-os.chdir(r'/Users/shawn/Dropbox/ML part1')
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import timeit
 
-data = pd.read_csv('ex1data1.txt',names=['Footage','HousePrice'])
-X = pd.DataFrame(data['Footage'])
-y = data['HousePrice']
+data = pd.read_csv('ex1data1.txt',names=['Popu','Profits'])
+X = pd.DataFrame(data['Popu'])
+y = data['Profits']
 
 def loss_func(X, y, theta):
     m, p = X.shape
