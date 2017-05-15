@@ -73,8 +73,8 @@ print("sklearn runing time: " + str(stop - start))
 print("sklearn error:" + str(sum((yhat - y) ** 2.0)/(2.0*m)))
 
 # plot the scatter and line fit
-plt.scatter(X['Footage'],y)
-plt.plot(Ｘ['Footage'],X.dot(theta),'-r')
+plt.scatter(X['popu'],y)
+plt.plot(Ｘ['popu'],X.dot(theta),'-r')
 plt.figure
-plt.plot(Ｘ['Footage'],yhat,'-g')
+plt.plot(Ｘ['popu'],yhat,'-g')
 del start, stop
