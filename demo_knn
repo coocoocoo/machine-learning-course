@@ -7,7 +7,7 @@ Created on Tue May 16 09:03:55 2017
 """
 
 import os
-os.chdir(r'/Users/shawn/Dropbox/ML_wordpress/part2 Knn and Logistic regression')
+os.chdir(r'Your ex2data1.txt file location')
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
