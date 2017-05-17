@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed May 17 14:26:10 2017
+
+@author: shawn
+"""
+
+import os
+os.chdir(r'Your ex2data2.txt file location')
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.utils import shuffle
+import matplotlib.pyplot as plt
+
+data = pd.read_csv("ex2data2.txt",names=['MT1','MT2','PassOrNot'])
+names = data.columns
+X_all = data[names[0:-1]]
+y = data[names[-1:]]
+
+# plot all data
+pos = y[y['PassOrNot'] == 1].index
+neg = y[y['PassOrNot'] == 0].index
+p_fig = plt.scatter(X_all.loc[pos]['MT1'],X_all.loc[pos]['MT2'])
+n_fig = plt.scatter(X_all.loc[neg]['MT1'],X_all.loc[neg]['MT2'])
+plt.legend((p_fig,n_fig),("Accepted","Rejected"))
+plt.xlabel("Microchip Test 1")
+plt.ylabel("Microchip Test 2")
+
+def add_intercept(X):
+    m, p = X.shape
+    X['intercept'] = pd.DataFrame(np.ones(m))
+    cols = X.columns.tolist()
+    cols = cols[-1:] + cols[0:-1]
+    X = X[cols]
+    return X
+
+""" compare to linear model """
+#add intercept term to X_all
+X_all = add_intercept(X_all)
+p = X_all.shape[1]
+
+# set background scatter
+from itertools import product
+m1, m2 = X_all.iloc[:,1:3].min()
+M1, M2 = X_all.iloc[:,1:3].max()
+r1 = np.arange(m1,M1,(M1-m1)/50)
+r2 = np.arange(m2,M2,(M2-m2)/50)
+bound =[ r1, r2 ]
+
+#add intercept term to r
+r = pd.DataFrame(list(product(r1, r2)))
+r = add_intercept(r)
+
+#slove problem with normal equation
+from numpy.linalg import inv
+theta = inv(X_all.T.dot(X_all)).dot(X_all.T).dot(y)
+r_hat = r.dot(theta)
+
+# treshold
+r_hat[r_hat >= 0.5]=1
+r_hat[r_hat < 0.5]=0
+
+#plot
+pos_hat = np.where(r_hat == 1)[0]
+neg_hat = np.where(r_hat == 0)[0]
+plt.figure()
+p_fig = plt.scatter(X_all.loc[pos]['MT1'],X_all.loc[pos]['MT2'])
+n_fig = plt.scatter(X_all.loc[neg]['MT1'],X_all.loc[neg]['MT2'])
+p_fig_h = plt.scatter(r.iloc[pos_hat][0],r.iloc[pos_hat][1],marker=',',s=1,alpha=0.3)
+n_fig_h = plt.scatter(r.iloc[neg_hat][0],r.iloc[neg_hat][1],marker=',',s=1,alpha=0.3)
+plt.legend((p_fig,n_fig),("Accepted","Rejected"))
+cZ = np.array(r_hat).reshape((len(r1),len(r2)),order="F")
+cX, cY = np.meshgrid(r1,r2)
+plt.contour(cX,cY,cZ,colors='k',linewidths=0.5)
+plt.xlabel("Microchip Test 1")
+plt.ylabel("Microchip Test 2")
+plt.title("Use Linear Model")
+
+""" knn begin """
+
+def cross_distance(X,U):
+    M = U.shape[0]
+    N = X.shape[0]
+    D = np.dot(X,U.T)
+    D = -2*D + np.tile(np.sum(X*X,axis=1),(M,1)).T
+    D = D + np.tile(np.sum(U*U,axis=1),(N,1))
+    return D
+
+def knn(X_train, y_train, r, k):
+    #Compute cross distance
+    D = cross_distance(r,X_train)
+    X_name = X_train.index
+    r_loc = np.argpartition(D,k)[:,:k]
+    r_hat = np.zeros(r_loc.shape[0])
+    for i in range(r_loc.shape[0]):
+        r_hat[i] = (y_train.PassOrNot[X_name[r_loc[i,:]]].sum()/k)>0.5
+    return r_hat
+
+X_all = data[names[0:-1]]
+### Shuffling train sets
+X_all, y = shuffle(X_all, y)
+### Splitting
+X_train, X_val, y_train, y_val = train_test_split(X_all, y, test_size=0.1)
+
+#To form paired x-y
+r = pd.DataFrame(list(product(r1, r2)))
+
+# trainig
+r_hat = knn(X_train,y_train,r,10)
+
+# training error
+D = cross_distance(X_train,r)
+y_train_hat = r_hat[np.argpartition(D,1)[:,:1]]
+train_error = sum(y_train_hat != np.array(y_train))[0]/len(y_train)
+print("Training Error: " +str(train_error))
+# cross validation error
+D = cross_distance(X_val,r)
+y_val_hat = r_hat[np.argpartition(D,1)[:,:1]]
+val_error = sum(y_val_hat != np.array(y_val))[0]/len(y_val)
+print("Cross Validation Error: "+str(val_error))
+
+### Scatter plot 
+plt.figure()
+pos = y_train[y_train['PassOrNot'] == 1].index
+neg = y_train[y_train['PassOrNot'] == 0].index
+p_fig = plt.scatter(X_train.loc[pos]['MT1'],X_train.loc[pos]['MT2'])
+n_fig = plt.scatter(X_train.loc[neg]['MT1'],X_train.loc[neg]['MT2'])
+plt.legend((p_fig,n_fig),("Accepted","Rejected"))
+plt.xlabel("Microchip Test 1")
+plt.ylabel("Microchip Test 2")
+
+#
+r.columns=['Ex1Label','Ex2Label']
+pos_hat = np.where(r_hat == 1)[0]
+neg_hat = np.where(r_hat == 0)[0]
+
+### Region Plot
+plt.figure()
+p_fig_h = plt.scatter(r.loc[pos_hat]['Ex1Label'],r.loc[pos_hat]['Ex2Label'],s=1)
+n_fig_h = plt.scatter(r.loc[neg_hat]['Ex1Label'],r.loc[neg_hat]['Ex2Label'],s=1)
+plt.legend((p_fig,n_fig),("Accepted","Rejected"))
+cZ = r_hat.reshape((len(bound[0]),len(bound[1])),order="F")
+cX, cY = np.meshgrid(bound[0],bound[1])
+plt.contour(cX,cY,cZ,colors='k',linewidths=0.5)
+plt.xlabel("Microchip Test 1")
+plt.ylabel("Microchip Test 2")
+
+### Mixed Plot
+plt.figure()
+p_fig = plt.scatter(X_train.loc[pos]['MT1'],X_train.loc[pos]['MT2'])
+n_fig = plt.scatter(X_train.loc[neg]['MT1'],X_train.loc[neg]['MT2'])
+p_fig_h = plt.scatter(r.loc[pos_hat]['Ex1Label'],r.loc[pos_hat]['Ex2Label'],marker=',',s=1,alpha=0.3)
+n_fig_h = plt.scatter(r.loc[neg_hat]['Ex1Label'],r.loc[neg_hat]['Ex2Label'],marker=',',s=1,alpha=0.3)
+plt.legend((p_fig,n_fig),("Accepted","Rejected"))
+cZ = r_hat.reshape((len(bound[0]),len(bound[1])),order="F")
+cX, cY = np.meshgrid(bound[0],bound[1])
+plt.contour(cX,cY,cZ,colors='k',linewidths=0.5)
+del cX, cY, cZ
+plt.xlabel("Microchip Test 1")
+plt.ylabel("Microchip Test 2")
+plt.title("Use K-nearest neighbor")
+
